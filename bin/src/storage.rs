@@ -1,4 +1,5 @@
 use anyhow::Error;
+use lindera::error::LinderaError;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 
@@ -6,6 +7,8 @@ use crate::index::Posts;
 use strip_markdown::strip_markdown;
 use tinysearch_shared::{Filters, PostId, Storage};
 use xorf::HashProxy;
+
+use lindera::tokenizer::{Tokenizer, Token};
 
 pub fn write(posts: Posts) -> Result<(), Error> {
     let filters = build(posts)?;
@@ -28,9 +31,18 @@ fn cleanup(s: String) -> String {
     s.replace(|c: char| !(c.is_alphabetic() || c == '\''), " ")
 }
 
+pub fn split_by_token(text: &str) -> Result<Vec<Token<'_>>, LinderaError>{
+    let tokenizer = Tokenizer::new()?;
+    let tokens = tokenizer.tokenize(text)?;
+    Ok(tokens)
+}
+
 fn tokenize(words: &str, stopwords: &HashSet<String>) -> HashSet<String> {
-    cleanup(strip_markdown(words))
-        .split_whitespace()
+    // cleanup(strip_markdown(words))
+    //    .split_whitespace()
+    split_by_token(&cleanup(strip_markdown(words))).unwrap()
+        .iter()
+        .map(|token| token.text)
         .filter(|&word| !word.trim().is_empty())
         .map(str::to_lowercase)
         .filter(|word| !stopwords.contains(word))
